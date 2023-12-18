@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::clone::Clone;
 
 #[derive(Debug, Clone)]
@@ -26,14 +28,13 @@ fn extract_potential_parts_from_line(line: &str) -> Vec<PotentialPart> {
             .enumerate()
             .fold(init_potential_parts, |mut result, (i, char)| {
                 match char.to_string().parse::<i32>() {
-                    Ok(x) => {
+                    Ok(_) => {
                         let mut init = part.clone();
 
                         let potential_part = result.last_mut().unwrap_or(&mut init);
 
                         potential_part.length += 1;
-                        potential_part.value =
-                            potential_part.value.to_owned() + x.to_string().as_str();
+                        potential_part.value.push(char);
                         return result;
                     }
                     Err(_) => {
