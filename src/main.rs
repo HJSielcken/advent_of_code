@@ -1,60 +1,87 @@
-use std::fs;
+use std::{collections::HashMap, fs};
+
+struct Configuration {
+    red: i32,
+    green: i32,
+    blue: i32,
+}
+
+const MAXIMUM_CONFIGURATION: Configuration = Configuration {
+    red: 12,
+    green: 13,
+    blue: 14,
+};
 
 fn main() {
-    let filename = "one.dat";
-    let input_result = fs::read_to_string(filename);
-    let input_content = match input_result {
+    let file = "two.dat";
+    let file_content = fs::read_to_string(file);
+
+    let test_input = match file_content {
         Ok(x) => x,
-        Err(error) => panic!("Could not read file: {}", error),
+        Err(err) => panic!("{}", err),
     };
+    // let test_input = r#"Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
+    // Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
+    // Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
+    // Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
+    // Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green"#;
 
-    // let input_contents = String::from("two1nine\neightwothree\nabcone2threexyz\nxtwone3four\n4nineeightseven2\nzoneight234\n7pqrstsixteen");
-    let normalized_content = normalize_content(input_content);
-
-
-    let sum: i32 = normalized_content
+    let games: Vec<i32> = test_input
         .lines()
-        .map(|line| first_integer(line.to_string()) + &last_integer(line.to_string()))
-        .map(|x| x.parse::<i32>().unwrap())
-        .sum();
+        .map(|line| check_game(line))
+        .enumerate()
+        .filter_map(|(i, result)| match result {
+            true => Some((i as i32) + 1),
+            false => None,
+        })
+        .collect();
+
+    let sum: i32 = games.iter().sum();
+
+    println!("{:?}", games);
     println!("{:?}", sum);
 }
 
-fn first_integer(line: String) -> String {
-    return line
-        .chars()
-        .find(|c| c.to_digit(10).is_some())
-        .unwrap_or('0')
-        .to_string();
+fn check_game(line: &str) -> bool {
+    let without_prefix = remove_prefix(line);
+    let rounds = without_prefix.split("; ");
+
+    let mut possible_rounds = rounds.map(|round| check_if_round_is_possible(round));
+
+    let is_possible = possible_rounds.find(|x| x == &false).unwrap_or(true);
+
+    return is_possible;
 }
 
-fn last_integer(line: String) -> String {
-    return line
-        .chars()
-        .rev()
-        .find(|c| c.to_digit(10).is_some())
-        .unwrap_or('0')
-        .to_string();
+fn check_if_round_is_possible(round: &str) -> bool {
+    let empty_map: HashMap<String, i32> = HashMap::new();
+    let configurations = round.split(", ");
+
+    let filled_map = configurations.fold(empty_map, |mut map, configuration| {
+        let splitted_configuration: Vec<&str> = configuration.split(" ").collect();
+
+        let (count, color) = match splitted_configuration.as_slice() {
+            [count, color] => (count.parse::<i32>().unwrap_or(0), color.to_string()),
+            _ => (0, "".to_string()),
+        };
+
+        map.insert(color, count);
+        return map;
+    });
+
+    let red_is_possible =
+        filled_map.get(&String::from("red")).unwrap_or(&0) <= &MAXIMUM_CONFIGURATION.red;
+    let blue_is_possible =
+        filled_map.get(&String::from("blue")).unwrap_or(&0) <= &MAXIMUM_CONFIGURATION.blue;
+    let green_is_possible =
+        filled_map.get(&String::from("green")).unwrap_or(&0) <= &MAXIMUM_CONFIGURATION.green;
+
+    return red_is_possible && green_is_possible && blue_is_possible;
 }
 
-fn normalize_content(content: String) -> String {
-    let replace_tabel = [
-        ("one".to_string(), "1".to_string()),
-        ("two".to_string(), "2".to_string()),
-        ("three".to_string(), "3".to_string()),
-        ("four".to_string(), "4".to_string()),
-        ("five".to_string(), "5".to_string()),
-        ("six".to_string(), "6".to_string()),
-        ("seven".to_string(), "7".to_string()),
-        ("eight".to_string(), "8".to_string()),
-        ("nine".to_string(), "9".to_string()),
-    ];
-
-    let normalized_content = replace_tabel
-        .into_iter()
-        .fold(content, |result, (string, int)| {
-            result.replace(&string, &(string.to_owned() + &int + &string))
-        });
-
-    return normalized_content;
+fn remove_prefix(line: &str) -> &str {
+    return line
+        .split(": ")
+        .nth(1)
+        .unwrap_or_else(|| panic!("Corrupt input file"));
 }
