@@ -1,16 +1,11 @@
-use std::{collections::HashMap, fs};
+use std::fs;
 
+#[derive(Debug)]
 struct Configuration {
     red: i32,
     green: i32,
     blue: i32,
 }
-
-const MAXIMUM_CONFIGURATION: Configuration = Configuration {
-    red: 12,
-    green: 13,
-    blue: 14,
-};
 
 fn main() {
     let file = "two.dat";
@@ -25,58 +20,75 @@ fn main() {
     // Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
     // Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
     // Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green"#;
+    // let test_input = r#"Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green"#;
 
-    let games: Vec<i32> = test_input
-        .lines()
-        .map(|line| check_game(line))
-        .enumerate()
-        .filter_map(|(i, result)| match result {
-            true => Some((i as i32) + 1),
-            false => None,
-        })
+    let games: Vec<Vec<Configuration>> = test_input.lines().map(|line| get_rounds(line)).collect();
+
+    let minimum_games_configuration: Vec<Configuration> = games
+        .iter()
+        .map(|rounds| minimum_game_configuration(rounds))
         .collect();
 
-    let sum: i32 = games.iter().sum();
+    let power_of_cubes = minimum_games_configuration.iter().map(|x|{ x.blue*x.green*x.red} );
+    let sum_of_power_of_cubes: i32 = power_of_cubes.sum();
 
-    println!("{:?}", games);
-    println!("{:?}", sum);
+    println!("{}", sum_of_power_of_cubes);
 }
 
-fn check_game(line: &str) -> bool {
+fn minimum_game_configuration(rounds: &Vec<Configuration>) -> Configuration {
+    let init_configuration = Configuration {
+        red: 0,
+        green: 0,
+        blue: 0,
+    };
+
+    let configuration = rounds
+        .iter()
+        .fold(init_configuration, |mut configuration, round| {
+            configuration.red = configuration.red.max(round.red);
+            configuration.blue = configuration.blue.max(round.blue);
+            configuration.green = configuration.green.max(round.green);
+
+            return configuration;
+        });
+
+    return configuration;
+}
+
+fn get_rounds(line: &str) -> Vec<Configuration> {
     let without_prefix = remove_prefix(line);
-    let rounds = without_prefix.split("; ");
+    let raw_rounds = without_prefix.split("; ");
 
-    let mut possible_rounds = rounds.map(|round| check_if_round_is_possible(round));
+    let rounds = raw_rounds.map(|raw_round| get_round(raw_round)).collect();
 
-    let is_possible = possible_rounds.find(|x| x == &false).unwrap_or(true);
-
-    return is_possible;
+    return rounds;
 }
 
-fn check_if_round_is_possible(round: &str) -> bool {
-    let empty_map: HashMap<String, i32> = HashMap::new();
-    let configurations = round.split(", ");
+fn get_round(round: &str) -> Configuration {
+    let init_configuration = Configuration {
+        red: 0,
+        green: 0,
+        blue: 0,
+    };
 
-    let filled_map = configurations.fold(empty_map, |mut map, configuration| {
-        let splitted_configuration: Vec<&str> = configuration.split(" ").collect();
-
-        let (count, color) = match splitted_configuration.as_slice() {
+    let configuration = round.split(", ").fold(init_configuration, |mut result, x| {
+        let count_and_color: Vec<&str> = x.split(" ").collect();
+        let (count, color) = match count_and_color.as_slice() {
             [count, color] => (count.parse::<i32>().unwrap_or(0), color.to_string()),
             _ => (0, "".to_string()),
         };
 
-        map.insert(color, count);
-        return map;
+        match color.as_str() {
+            "red" => result.red = count,
+            "blue" => result.blue = count,
+            "green" => result.green = count,
+            _ => (),
+        }
+
+        return result;
     });
 
-    let red_is_possible =
-        filled_map.get(&String::from("red")).unwrap_or(&0) <= &MAXIMUM_CONFIGURATION.red;
-    let blue_is_possible =
-        filled_map.get(&String::from("blue")).unwrap_or(&0) <= &MAXIMUM_CONFIGURATION.blue;
-    let green_is_possible =
-        filled_map.get(&String::from("green")).unwrap_or(&0) <= &MAXIMUM_CONFIGURATION.green;
-
-    return red_is_possible && green_is_possible && blue_is_possible;
+    return configuration;
 }
 
 fn remove_prefix(line: &str) -> &str {
