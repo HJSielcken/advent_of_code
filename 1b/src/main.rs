@@ -8,15 +8,14 @@ fn main() {
         Err(error) => panic!("Could not read file: {}", error),
     };
 
-    // let input_contents = String::from("two1nine\neightwothree\nabcone2threexyz\nxtwone3four\n4nineeightseven2\nzoneight234\n7pqrstsixteen");
     let normalized_content = normalize_content(input_content);
-
 
     let sum: i32 = normalized_content
         .lines()
         .map(|line| first_integer(line.to_string()) + &last_integer(line.to_string()))
         .map(|x| x.parse::<i32>().unwrap())
         .sum();
+    
     println!("{:?}", sum);
 }
 
