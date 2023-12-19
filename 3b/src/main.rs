@@ -12,9 +12,6 @@ struct PotentialPart {
     star_position: Option<(i32, i32)>,
 }
 
-
-type Part = PotentialPart;
-
 fn main() {
     //     let test_input = r#"467..114..
     // ...*......
@@ -44,9 +41,29 @@ fn main() {
         .map(|potential_part| determine_neighbours(potential_part, max_x, max_y))
         .filter(|potential_part| determine_if_is_real_part(potential_part, &indexed_map));
 
-    let sum_of_parts: i32 = parts.map(|part| part.value.parse::<i32>().unwrap()).sum();
+    let parts_with_star: Vec<PotentialPart> =
+        parts.filter(|part| has_star_as_neighbour(part)).collect();
 
-    println!("{}", sum_of_parts);
+    let part_couples: Vec<(PotentialPart, PotentialPart)> = find_parts_with_couple(parts_with_star);
+
+    let part_gear_ratios = part_couples.iter().map(|(part_1, part_2)| {
+        part_1.value.parse::<i32>().unwrap() * part_2.value.parse::<i32>().unwrap()
+    });
+
+
+    // let sum_of_parts: i32 = parts.map(|part| part.value.parse::<i32>().unwrap()).sum();
+    let sum_of_gear_rations: i32 = part_gear_ratios.sum();
+
+    println!("{}", sum_of_gear_rations);
+}
+
+fn find_parts_with_couple(parts: Vec<PotentialPart>) -> Vec<(PotentialPart, PotentialPart)> {
+    let part_couples: Vec<(PotentialPart, PotentialPart)> = Vec::new();
+    return part_couples;
+}
+
+fn has_star_as_neighbour(part: &PotentialPart) -> bool {
+    return false;
 }
 
 fn determine_if_is_real_part(potential_part: &PotentialPart, indexed_map: &Vec<Vec<char>>) -> bool {
