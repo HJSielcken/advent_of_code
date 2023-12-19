@@ -12,9 +12,6 @@ struct PotentialPart {
     star_position: Option<(i32, i32)>,
 }
 
-
-type Part = PotentialPart;
-
 fn main() {
     //     let test_input = r#"467..114..
     // ...*......
