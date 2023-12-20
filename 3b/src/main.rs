@@ -2,20 +2,20 @@
 
 use std::{collections::HashMap, fs};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 
 struct Position {
   x: i32,
   y: i32,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 struct Size {
   width: i32,
   height: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct PotentialPart {
   value: String,
   length: i32,
@@ -32,37 +32,32 @@ fn main() {
 
   let indexed_map = text_to_indexed_map(test_input.as_str());
 
-  let max_x = indexed_map[0].len() as i32;
-  let max_y = indexed_map.len() as i32;
+  let width = indexed_map[0].len() as i32;
+  let height = indexed_map.len() as i32;
 
-  let size = Size { width: max_x, height: max_y };
+  let size = Size { width, height };
 
   let potential_parts = test_input
     .lines()
     .enumerate()
     .flat_map(|(y0, line)| extract_potential_parts_from_line(line, y0 as i32));
 
-  let parts = potential_parts.map(|potential_part| add_star_position(potential_part, &size, &indexed_map));
+  let parts: Vec<Part> = potential_parts.filter_map(|potential_part| add_star_position(potential_part, &size, &indexed_map)).collect();
+  let star_location_to_parts_map = generate_star_location_to_parts_map(parts, size);
 
-  let parts_with_star: Vec<Part> = parts.filter_map(|part| part).collect();
-
-  let star_location_to_parts_map = generate_star_location_to_parts_map(parts_with_star, size);
-
-  let sum: i32 = star_location_to_parts_map
+  let sum_of_gear_ratios: i32 = star_location_to_parts_map
     .values()
-    .filter_map(|part| {
-      if part.len() == 2 {
-        return Some(part[0].value.parse::<i32>().unwrap() * part[1].value.parse::<i32>().unwrap());
-      }
-      return None;
+    .filter_map(|part| match part.len() {
+      2 => Some(part[0] * part[1]),
+      _ => None,
     })
     .sum();
 
-  println!("{}", sum);
+  println!("{}", sum_of_gear_ratios);
 }
 
-fn generate_star_location_to_parts_map(parts: Vec<Part>, size: Size) -> HashMap<i32, Vec<Part>> {
-  let init_map: HashMap<i32, Vec<Part>> = HashMap::new();
+fn generate_star_location_to_parts_map(parts: Vec<Part>, size: Size) -> HashMap<i32, Vec<i32>> {
+  let init_map: HashMap<i32, Vec<i32>> = HashMap::new();
 
   let filled_map = parts.into_iter().fold(init_map, |mut map, part| {
     let star_position = part.star_position.unwrap();
@@ -70,10 +65,10 @@ fn generate_star_location_to_parts_map(parts: Vec<Part>, size: Size) -> HashMap<
 
     match map.get_mut(&index) {
       Some(x) => {
-        x.push(part);
+        x.push(part.value.parse::<i32>().unwrap());
       }
       None => {
-        map.insert(index, vec![part]);
+        map.insert(index, vec![part.value.parse::<i32>().unwrap()]);
       }
     }
     return map;
@@ -87,8 +82,8 @@ fn add_star_position(mut potential_part: PotentialPart, size: &Size, indexed_map
   let y0 = potential_part.y0.unwrap() as i32;
   let length = potential_part.length as i32;
 
-  let top_line = (x0 - 1..(x0 + length + 1)).map(|x| (x, y0 - 1));
-  let bottom_line = (x0 - 1..(x0 + length + 1)).map(|x| (x, y0 + 1));
+  let top_line = ((x0 - 1)..(x0 + length + 1)).map(|x| (x, y0 - 1));
+  let bottom_line = ((x0 - 1)..(x0 + length + 1)).map(|x| (x, y0 + 1));
   let left = std::iter::once((x0 - 1, y0));
   let right = std::iter::once((x0 + length, y0));
 
@@ -121,20 +116,17 @@ fn extract_potential_parts_from_line(line: &str, y0: i32) -> Vec<PotentialPart> 
     match char.to_string().parse::<usize>() {
       Ok(_) => {
         let potential_part = result.last_mut().unwrap();
-
         update_potential_part(x0 as i32, char, potential_part);
-        return result;
       }
-      Err(_) => {
+      Err(_) => if result.last().unwrap().x0.is_some() {
         let new_potential_part = init_potential_part(None, Some(y0));
         result.push(new_potential_part);
-        return result;
       }
     };
+    return result;
   });
 
   let filtered_potential_parts: Vec<PotentialPart> = potential_parts.into_iter().filter(|x| x.length > 0).collect();
-
   return filtered_potential_parts;
 }
 
