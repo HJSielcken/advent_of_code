@@ -1,31 +1,28 @@
 #[warn(dead_code)]
 pub mod read_file;
-use std::collections::HashMap;
-
 use read_file::read;
+use std::collections::HashMap;
 
 fn main() {
   let path = "4.dat";
   let file_contents = read::read_string_from_file(path);
 
-  let number_of_starting_cards = get_line_count(&file_contents);
-  let init_map = generate_init_map(number_of_starting_cards);
+  let start_cards_count = get_line_count(&file_contents);
 
-  let score_per_card: Vec<(i32, i32)> = file_contents
-    .lines()
-    .map(|line| line_to_card(line))
+  let cards = file_contents.lines().map(|line| line_to_card(line));
+
+  let matching_numbers_per_card = cards
     .enumerate()
-    .map(|(i, cards)| ((i + 1) as i32, calculate_match_count(&cards)))
-    .collect();
+    .map(|(card_index, numbers)| ((card_index + 1) as i32, get_matching_numbers_count(numbers)));
 
-  let number_of_scratch_cards: i32 = score_per_card
-    .into_iter()
-    .fold(init_map, |map, (card_number, score)| {
+  let initial_map = generate_initial_map(start_cards_count);
 
-      let multiplier = map.get(&card_number).unwrap();
-      let max_card_to_add = number_of_starting_cards.min(score + card_number);
+  let total_number_of_scratch_cards: i32 = matching_numbers_per_card
+    .fold(initial_map, |map, (card_number, score)| {
+      let multiplier = *map.get(&card_number).unwrap();
+      let maximum_card_index = start_cards_count.min(score + card_number);
 
-      return ((card_number + 1)..(max_card_to_add + 1)).fold(map.to_owned(), |mut result, x| {
+      return ((card_number + 1)..(maximum_card_index + 1)).fold(map, |mut result, x| {
         let current_card_count = result.get(&x).unwrap();
         let new_card_count = current_card_count + multiplier * 1;
         result.insert(x, new_card_count);
@@ -35,33 +32,24 @@ fn main() {
     .into_values()
     .sum();
 
-  println!("{:?}", number_of_scratch_cards);
+  println!("{}", total_number_of_scratch_cards);
 }
 
-fn calculate_match_count(cards: &(Vec<i32>, Vec<i32>)) -> i32 {
-  let init_map: HashMap<i32, i32> = HashMap::new();
+fn get_matching_numbers_count(numbers: (Vec<i32>, Vec<i32>)) -> i32 {
+  let (elf, mine) = numbers;
 
-  let (elf, me) = cards;
-  let map_with_elf_values = elf.iter().fold(init_map, |mut map, x| {
-    let value = map.get(x).unwrap_or(&0).clone();
-    map.insert(*x, value + 1);
-    return map;
-  });
+  let binned_elf_numbers = bin_entries(elf, HashMap::new());
+  let binned_elf_and_mine_numbers = bin_entries(mine, binned_elf_numbers);
+  return binned_elf_and_mine_numbers.into_values().filter(|x| x == &2).collect::<Vec<i32>>().len() as i32;
+}
 
-  let map_with_all_values = me.iter().fold(map_with_elf_values, |mut map, &x| {
-    let value = map.get(&x).unwrap_or(&0).to_owned();
-    map.insert(x, value + 1);
-    return map;
-  });
+fn bin_entries(entries: Vec<i32>, initial_map: HashMap<i32, i32>) -> HashMap<i32, i32> {
+  return entries.iter().fold(initial_map, |mut result, x| {
+    let value = result.get(x).unwrap_or(&0);
+    result.insert(*x, value + 1);
 
-  let matches_count: i32 = map_with_all_values.into_values().fold(0, |result, x| {
-    if x == 2 {
-      return result + 1;
-    }
     return result;
   });
-
-  return matches_count;
 }
 
 fn line_to_card(line: &str) -> (Vec<i32>, Vec<i32>) {
@@ -88,9 +76,9 @@ fn remove_prefix(line: &str) -> &str {
   return line.split(":").nth(1).unwrap();
 }
 
-fn generate_init_map(number_of_cards: i32) -> HashMap<i32, i32> {
+fn generate_initial_map(number_of_cards: i32) -> HashMap<i32, i32> {
   let init_map: HashMap<i32, i32> = HashMap::new();
-  return (1..=number_of_cards).fold(init_map, |mut map, x| {
+  return (1..(number_of_cards + 1)).fold(init_map, |mut map, x| {
     map.insert(x as i32, 1);
     return map;
   });
